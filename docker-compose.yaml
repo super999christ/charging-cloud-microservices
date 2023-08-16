@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+  service_notification:
+    image: 101265448075.dkr.ecr.us-west-2.amazonaws.com/charging/notifications:latest
+    build:
+      context: ./
+      dockerfile: ./apps/notification/Dockerfile
+    env_file:
+      - .env
+    ports:
+      - 3002:3002
+    volumes:
+      - .:/apps/notification
+
+  service_api_auth:
+    image: 101265448075.dkr.ecr.us-west-2.amazonaws.com/charging/api-auth:latest
+    build:
+      context: ./
+      dockerfile: ./apps/api-auth/Dockerfile
+    env_file:
+      - .env
+    ports:
+      - 3001:3001
+    volumes:
+      - .:/apps/api-auth
+
+  service_payment:
+    image: 101265448075.dkr.ecr.us-west-2.amazonaws.com/charging/payments:latest
+    build:
+      context: ./
+      dockerfile: ./apps/payment/Dockerfile
+    env_file:
+      - .env
+    ports:
+      - 3005:3005
+    volumes:
+      - .:/apps/payment
