@@ -16,4 +16,8 @@ RUN npm run build
 
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
+ENV NO_COLOR=true
+
+EXPOSE 3000
+
 CMD npm run dev

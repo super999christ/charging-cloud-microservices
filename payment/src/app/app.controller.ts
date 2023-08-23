@@ -7,6 +7,7 @@ import {
   Put,
   Query,
   Response,
+  Logger
 } from "@nestjs/common";
 import { Response as IResponse } from "express";
 import { PaymentService } from "../services/payment/payment.service";
@@ -17,6 +18,8 @@ import { CompleteCCDto } from "./dtos/CompleteCC.dto";
 
 @Controller()
 export class AppController {
+  private readonly logger = new Logger(AppController.name);
+
   @Inject()
   paymentService: PaymentService;
 
@@ -127,6 +130,7 @@ export class AppController {
 
   @Get("healthz")
   public async healthz(@Response() response: IResponse) {
+    this.logger.error({"propertyA": "this is a property", "error": "This is a really long error message asdfhaskjfha jkdhfa skjdfha sjkdfhasljkdfhasjkdfh asjdkfh askjdhfa skjdfhaslkjdfhasljkf haj fhasdfj hasldkfj hasldfhasdfkjahsd flhasdfj kahsdfljahsdfljashdfljkashdf ljashdfla jshdflajs hdflajkshdflkjasdhflasjdhf alsjdhalskdfhaslk dhsjklfd hasldkfj hasdljk fhsladf hasldkjfhasljkdfhasldjkfhasljkdf hasljkdfhasljdhf alskjhdfls jkhf."});
     return response.sendStatus(200);
   }
 }
