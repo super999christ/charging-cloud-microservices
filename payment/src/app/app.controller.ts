@@ -130,7 +130,7 @@ export class AppController {
 
   @Get("healthz")
   public async healthz(@Response() response: IResponse) {
-    this.logger.error("Something went wrong!", {"propertyA": "this is a property", "error": "This is a really long error message asdfhaskjfha jkdhfa skjdfha sjkdfhasljkdfhasjkdfh asjdkfh askjdhfa skjdfhaslkjdfhasljkf haj fhasdfj hasldkfj hasldfhasdfkjahsd flhasdfj kahsdfljahsdfljashdfljkashdf ljashdfla jshdflajs hdflajkshdflkjasdhflasjdhf alsjdhalskdfhaslk dhsjklfd hasldkfj hasdljk fhsladf hasldkjfhasljkdfhasldjkfhasljkdf hasljkdfhasljdhf alskjhdfls jkhf."});
+    this.logger.error(JSON.stringify({"propertyA": "this is a property", "error": "This is a really long error message asdfhaskjfha jkdhfa skjdfha sjkdfhasljkdfhasjkdfh asjdkfh askjdhfa skjdfhaslkjdfhasljkf haj fhasdfj hasldkfj hasldfhasdfkjahsd flhasdfj kahsdfljahsdfljashdfljkashdf ljashdfla jshdflajs hdflajkshdflkjasdhflasjdhf alsjdhalskdfhaslk dhsjklfd hasldkfj hasdljk fhsladf hasldkjfhasljkdfhasldjkfhasljkdf hasljkdfhasljdhf alskjhdfls jkhf."}));
     return response.sendStatus(200);
   }
 }
