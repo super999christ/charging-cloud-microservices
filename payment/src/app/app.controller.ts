@@ -3,18 +3,19 @@ import {
   Controller,
   Get,
   Inject,
+  Logger,
   Post,
   Put,
-  Query,
+  Request,
   Response,
-  Logger
 } from "@nestjs/common";
-import { Response as IResponse } from "express";
+import { Response as IResponse, Request as IRequest } from "express";
 import { PaymentService } from "../services/payment/payment.service";
 import { ApiBearerAuth, ApiOperation } from "@nestjs/swagger";
-import { SaveCCDto } from "./dtos/SaveCC.dto";
 import { UpdateCCDto } from "./dtos/UpdateCC.dto";
 import { CompleteCCDto } from "./dtos/CompleteCC.dto";
+import axios from "axios";
+import Environment from "../config/env";
 
 @Controller()
 export class AppController {
@@ -23,59 +24,34 @@ export class AppController {
   @Inject()
   paymentService: PaymentService;
 
-  @Post("save-cc")
-  @ApiOperation({ summary: "Save credit card information" })
-  @ApiBearerAuth()
-  public async saveCC(
-    @Body() params: SaveCCDto,
-    @Response() response: IResponse
-  ) {
-    const { cardNumber, expYear, expMonth, cvc, customerEmail, customerName } =
-      params;
-    try {
-      const stripePaymentMethod = await this.paymentService.createPaymentMethod(
-        cardNumber,
-        expYear,
-        expMonth,
-        cvc
-      );
-      const stripeCustomer = await this.paymentService.createCustomer(
-        customerEmail,
-        customerName
-      );
-      await this.paymentService.attachPaymentMethodToCustomer(
-        stripePaymentMethod.id,
-        stripeCustomer.id
-      );
-      response.send({
-        customerId: stripeCustomer.id,
-        pmId: stripePaymentMethod.id,
-      });
-    } catch (err) {
-      console.error("@Error: ", err);
-      response.sendStatus(400);
-    }
-  }
-
   @Get("get-cc")
   @ApiOperation({ summary: "Fetch credit card information" })
   @ApiBearerAuth()
-  public async getCC(
-    @Query("pmId") pmId: string,
-    @Response() response: IResponse
-  ) {
+  public async getCC(@Request() req: IRequest, @Response() res: IResponse) {
     try {
-      const stripePaymentMethod = await this.paymentService.getPaymentMethod(
-        pmId
+      const userId = (req as any).userId;
+      const customer = await this.paymentService.getCustomer(userId);
+
+      if (!customer)
+        return res
+          .status(400)
+          .send("You do not have a linked stripe customer id");
+
+      const paymentMethods = await this.paymentService.getPaymentMethods(
+        customer.id
       );
-      response.send({
-        last4: stripePaymentMethod.card?.last4,
-        expMonth: stripePaymentMethod.card?.exp_month,
-        expYear: stripePaymentMethod.card?.exp_year,
+
+      const paymentMethod = paymentMethods.data[0];
+
+      res.send({
+        last4: paymentMethod.card?.last4,
+        expMonth: paymentMethod.card?.exp_month,
+        expYear: paymentMethod.card?.exp_year,
+        postalCode: paymentMethod.billing_details.address?.postal_code,
       });
     } catch (err) {
-      console.error("@Error: ", err);
-      response.sendStatus(400);
+      this.logger.error(JSON.stringify(err));
+      res.sendStatus(400);
     }
   }
 
@@ -83,27 +59,52 @@ export class AppController {
   @ApiOperation({ summary: "Update credit card information" })
   @ApiBearerAuth()
   public async updateCC(
-    @Body() params: UpdateCCDto,
+    @Body() body: UpdateCCDto,
+    @Request() req: IRequest,
     @Response() response: IResponse
   ) {
-    const { cardNumber, expYear, expMonth, cvc, pmId } = params;
     try {
-      const newStripePaymentMethod =
-        await this.paymentService.updatePaymentMethod(
-          pmId,
-          cardNumber,
-          expYear,
-          expMonth,
-          cvc
+      const userId = (req as any).userId;
+      const customer = await this.paymentService.getCustomer(userId);
+
+      if (customer) {
+        const paymentMethods = await this.paymentService.getPaymentMethods(
+          customer.id
         );
-      const customerId = newStripePaymentMethod.customer as string;
-      response.send({
-        pmId: newStripePaymentMethod.id,
-        customerId,
-      });
+
+        paymentMethods.data.forEach((pm) =>
+          this.paymentService.detachPaymentMethod(pm.id)
+        );
+
+        await this.paymentService.attachPaymentMethodToCustomer(
+          body.pmId,
+          customer.id
+        );
+      } else {
+        const {
+          data: { firstName, lastName, email },
+        } = await axios.get(
+          `${Environment.SERVICE_USER_MANAGEMENT_URL}/profile`,
+          {
+            headers: { Authorization: (req as any).headers.authorization },
+          }
+        );
+        const customer = await this.paymentService.createCustomer(
+          email,
+          `${firstName} ${lastName}`,
+          userId
+        );
+
+        await this.paymentService.attachPaymentMethodToCustomer(
+          body.pmId,
+          customer.id
+        );
+      }
+
+      response.status(200).send();
     } catch (err) {
-      console.error("@Error: ", err);
-      response.status(400).send("Credit card information is incorrect");
+      this.logger.error(JSON.stringify(err));
+      response.status(400).send("Failed to update credit card");
     }
   }
 
@@ -111,26 +112,42 @@ export class AppController {
   @ApiOperation({ summary: "Complete charging" })
   @ApiBearerAuth()
   public async completeCharge(
-    @Body() params: CompleteCCDto,
-    @Response() response: IResponse
+    @Body() body: CompleteCCDto,
+    @Request() req: IRequest,
+    @Response() res: IResponse
   ) {
-    const { amount, pmId, cusId } = params;
     try {
-      const charge = await this.paymentService.chargePayment(
-        pmId,
-        cusId,
-        amount
+      const userId = (req as any).userId;
+      const customer = await this.paymentService.getCustomer(userId);
+
+      if (!customer)
+        return res
+          .status(400)
+          .send("You do not have a linked stripe customer id");
+
+      const paymentMethods = await this.paymentService.getPaymentMethods(
+        customer.id
       );
-      response.send(charge);
+
+      if (paymentMethods.data.length <= 0)
+        return res
+          .status(400)
+          .send("You do not have an attached payment method");
+
+      const charge = await this.paymentService.chargePayment(
+        paymentMethods.data[0].id,
+        customer.id,
+        body.amount
+      );
+      res.send(charge);
     } catch (err) {
-      console.error("@Error: ", err);
-      response.sendStatus(500);
+      this.logger.error(JSON.stringify(err));
+      res.status(400).send("Failed to process payment");
     }
   }
 
   @Get("healthz")
   public async healthz(@Response() response: IResponse) {
-    this.logger.error(JSON.stringify({"propertyA": "this is a property", "error": "This is a really long error message asdfhaskjfha jkdhfa skjdfha sjkdfhasljkdfhasjkdfh asjdkfh askjdhfa skjdfhaslkjdfhasljkf haj fhasdfj hasldkfj hasldfhasdfkjahsd flhasdfj kahsdfljahsdfljashdfljkashdf ljashdfla jshdflajs hdflajkshdflkjasdhflasjdhf alsjdhalskdfhaslk dhsjklfd hasldkfj hasdljk fhsladf hasldkjfhasljkdfhasldjkfhasljkdf hasljkdfhasljdhf alskjhdfls jkhf."}));
     return response.sendStatus(200);
   }
 }
