@@ -21,7 +21,7 @@ pipeline {
                 script {
                     env.TAG = input message: 'Please enter image tag',
                                         parameters: [string(defaultValue: 'latest', description: '', name: 'tag')]
-                    dir("payment") {
+                    dir("api-auth") {
                         app = docker.build("${IMAGE_NAME}")
                     }
                 }
