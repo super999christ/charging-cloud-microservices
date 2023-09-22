@@ -8,6 +8,7 @@ import { TwilioModule } from "../services/twilio/twilio.module";
 import { AppController } from "./app.controller";
 import { AuthMiddleware } from "../middlewares/auth.middleware";
 import { EmailModule } from "../services/email/email.module";
+import { EventNotificationModule } from "../database/event-notification/event-notification.module";
 
 @Module({
   controllers: [AppController],
@@ -18,6 +19,7 @@ import { EmailModule } from "../services/email/email.module";
     EmailModule,
     EmailNotificationModule,
     SMSNotificationModule,
+    EventNotificationModule,
   ],
 })
 export class AppModule {

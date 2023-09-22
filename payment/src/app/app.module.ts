@@ -11,9 +11,8 @@ import { PaymentModule } from "../services/payment/payment.module";
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer
-      .apply(AuthMiddleware)
-      .exclude({ path: "/healthz", method: RequestMethod.GET })
-      .forRoutes("*");
+    consumer.apply(AuthMiddleware)
+    .exclude({ path: "/healthz", method: RequestMethod.GET })
+    .forRoutes("*");
   }
 }

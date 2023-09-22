@@ -147,7 +147,7 @@ export class AppController {
   }
 
   @Get("healthz")
-  public async healthz(@Response() response: IResponse) {
-    return response.sendStatus(200);
+  public async healthz(@Response() res: IResponse) {
+    return res.sendStatus(200);
   }
 }

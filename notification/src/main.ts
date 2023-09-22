@@ -1,17 +1,17 @@
 import { NestFactory } from "@nestjs/core";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
-import { AppModule } from "./app/app.module";
+import { AppModule } from './app/app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-
+  
   const options = new DocumentBuilder()
-    .setTitle("Notification Microservice")
-    .setDescription("Notification API description")
+    .setTitle('Notification Microservice')
+    .setDescription('Notification API description')
     .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, options);
-  SwaggerModule.setup("docs", app, document);
+  SwaggerModule.setup('docs', app, document);
 
   app.enableCors();
 
@@ -19,7 +19,7 @@ async function bootstrap() {
 
   await app.listen(3000);
 
-  console.log("Notification Microservice is listening");
+  console.log('Notification Microservice is listening');
 }
 
 bootstrap();

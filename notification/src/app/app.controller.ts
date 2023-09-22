@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Inject, Post, Response } from "@nestjs/common";
+import { Body, Controller, Inject, Logger, Post, Response } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation } from "@nestjs/swagger";
 import Environment from "../config/env";
 import { Response as IResponse } from "express";
@@ -11,9 +11,13 @@ import { EmailNotificationService } from "../database/email-notification/email-n
 import { SendEmailAuthCodeDto } from "./dtos/SendEmailAuthCode.dto";
 import { ValidateEmailAuthCodeDto } from "./dtos/ValidateEmailAuthCode.dto";
 import { SendPasswordResetLink } from "./dtos/SendPasswordResetLink.dto";
+import { SendChargingEventCompletedDto } from "./dtos/SendChargingEventCompleted.dto";
+import { EventNotificationService } from "../database/event-notification/event-notification.service";
 
 @Controller()
 export class AppController {
+  private readonly logger = new Logger(AppController.name);
+
   @Inject()
   private twilioService: TwilioService;
   @Inject()
@@ -22,6 +26,8 @@ export class AppController {
   private smsNotificationService: SMSNotificationService;
   @Inject()
   private emailNotificationService: EmailNotificationService;
+  @Inject()
+  private eventNotificationService: EventNotificationService;
 
   @Post("send-sms-authcode")
   @ApiOperation({ summary: "Send SMS AuthCode notification" })
@@ -47,7 +53,9 @@ export class AppController {
       authCode,
       verified: false,
     });
-    this.twilioService.sendSMS(phoneNumber, authMessage).catch(() => {});
+    this.twilioService
+      .sendSMS(phoneNumber, authMessage)
+      .catch(err => this.logger.error("Failed to send sms auth code.", JSON.stringify(err)));
     response.status(200).send(notification);
   }
 
@@ -93,7 +101,7 @@ export class AppController {
 
     this.emailService
       .sendEmail(email, notification.emailSubject, notification.emailBody)
-      .catch(() => {});
+      .catch(err => this.logger.error("Failed to send email auth code", JSON.stringify(err)));
     response.status(200).send(notification);
   }
 
@@ -139,12 +147,32 @@ export class AppController {
 
     this.emailService
       .sendEmail(email, notification.emailSubject, notification.emailBody)
-      .catch(() => {});
+      .catch(err => this.logger.error("Failed to send password reset request", JSON.stringify(err)));
     response.status(200).send(notification);
   }
 
-  @Get("healthz")
-  public async healthz(@Response() response: IResponse) {
-    return response.sendStatus(200);
+  @Post("send-event-completed")
+  @ApiOperation({ summary: "Send ChargingEvent completed notification" })
+  @ApiBearerAuth()
+  public async sendChargingEventCompleted(
+    @Body() body: SendChargingEventCompletedDto,
+    @Response() response: IResponse
+  ) {
+    const { type, eventId, email, phoneNumber } = body;
+    if (type === 'email') {
+      await this.emailService.sendEmail(email!, "Charging Completed", `EventId=${eventId}`);
+    } else {
+      await this.twilioService.sendSMS(phoneNumber!, `Charging Completed with EventId=${eventId}`);
+    }
+    const notification = await this.eventNotificationService.saveNotification({
+      isComplete: true,
+      eventId,
+      type
+    });
+    response.status(200).send(notification);
+  }
+
+  public async healthz(@Response() res: IResponse) {
+    return res.sendStatus(200);
   }
 }
