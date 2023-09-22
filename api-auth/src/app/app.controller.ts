@@ -16,7 +16,7 @@ export class AppController {
   public async requestUserToken(
     @Body() requestUserTokenDto: RequestUserTokenDto
   ) {
-    const app = AppDictionary.find((app) => app.appName === "charging");
+    const app = AppDictionary.find(app => app.appName === 'charging');
     if (app) {
       const token = this.authService.generateToken({
         ...app,
@@ -30,7 +30,9 @@ export class AppController {
 
   @Post("validate-user-token")
   @ApiOperation({ summary: "Validates User JWT" })
-  public async validateUserToken(@Body() validateTokenDto: ValidateTokenDto) {
+  public async validateUserToken(
+    @Body() validateTokenDto: ValidateTokenDto
+  ) {
     const payload = this.authService.validateToken(validateTokenDto.token);
     if (payload) {
       const app = AppDictionary.find(
@@ -45,7 +47,7 @@ export class AppController {
   }
 
   @Get("healthz")
-  public async healthz(@Response() response: IResponse) {
-    return response.sendStatus(200);
+  public async healthz(@Response() res: IResponse) {
+    return res.sendStatus(200);
   }
 }
