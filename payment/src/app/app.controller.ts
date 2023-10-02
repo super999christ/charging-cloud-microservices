@@ -67,41 +67,27 @@ export class AppController {
       const userId = (req as any).userId;
       const customer = await this.paymentService.getCustomer(userId);
 
-      if (customer) {
-        const paymentMethods = await this.paymentService.getPaymentMethods(
-          customer.id
-        );
+      if (!customer)
+        return response
+          .status(400)
+          .send(
+            "You must create a customer before updating the payment method."
+          );
 
-        paymentMethods.data.forEach((pm) =>
-          this.paymentService.detachPaymentMethod(pm.id)
-        );
+      const paymentMethods = await this.paymentService.getPaymentMethods(
+        customer.id
+      );
 
-        await this.paymentService.attachPaymentMethodToCustomer(
-          body.pmId,
-          customer.id
-        );
-      } else {
-        const {
-          data: { firstName, lastName, email },
-        } = await axios.get(
-          `${Environment.SERVICE_USER_MANAGEMENT_URL}/profile`,
-          {
-            headers: { Authorization: (req as any).headers.authorization },
-          }
-        );
-        const customer = await this.paymentService.createCustomer(
-          email,
-          `${firstName} ${lastName}`,
-          userId
-        );
+      paymentMethods.data.forEach((pm) =>
+        this.paymentService.detachPaymentMethod(pm.id)
+      );
 
-        await this.paymentService.attachPaymentMethodToCustomer(
-          body.pmId,
-          customer.id
-        );
-      }
+      await this.paymentService.attachPaymentMethodToCustomer(
+        body.pmId,
+        customer.id
+      );
 
-      response.status(200).send();
+      response.status(204).send();
     } catch (err) {
       this.logger.error(JSON.stringify(err));
       response.status(400).send("Failed to update credit card");
@@ -146,8 +132,31 @@ export class AppController {
     }
   }
 
+  @Post("customer")
+  @ApiOperation({ summary: "Creates a stripe customer" })
+  @ApiBearerAuth()
+  public async customer(@Request() req: IRequest, @Response() res: IResponse) {
+    const userId = (req as any).userId;
+    const {
+      data: { firstName, lastName, email },
+    } = await getUserProfile(req);
+    await this.paymentService.createCustomer(
+      email,
+      `${firstName} ${lastName}`,
+      userId
+    );
+
+    return res.status(204).send();
+  }
+
   @Get("healthz")
   public async healthz(@Response() res: IResponse) {
     return res.sendStatus(200);
   }
+}
+
+function getUserProfile(req: IRequest) {
+  return axios.get(`${Environment.SERVICE_USER_MANAGEMENT_URL}/profile`, {
+    headers: { Authorization: (req as any).headers.authorization },
+  });
 }

@@ -16,13 +16,23 @@ export class PaymentService {
     customerName: string,
     userId: string
   ) {
-    return this.stripe.customers.create({
-      email: customerEmail,
-      name: customerName,
-      metadata: {
-        userId,
+    const result = await this.getCustomerByUserId(userId);
+
+    if (result.total_count === 1) return result.data[0];
+
+    if (0 < result.total_count!)
+      throw Error(`More than 1 customer exists for userId ${userId}`);
+
+    return this.stripe.customers.create(
+      {
+        email: customerEmail,
+        name: customerName,
+        metadata: {
+          userId,
+        },
       },
-    });
+      { idempotencyKey: userId }
+    );
   }
 
   public async detachPaymentMethod(pmId: string) {
@@ -36,9 +46,7 @@ export class PaymentService {
   }
 
   public async getCustomer(userId: string) {
-    const result = await this.stripe.customers.search({
-      query: `metadata[\"userId\"]: \"${userId}\"`,
-    });
+    const result = await this.getCustomerByUserId(userId);
 
     if (result.total_count === 0) return null;
 
@@ -66,5 +74,11 @@ export class PaymentService {
       description: "NXU charge",
     });
     return paymentIntent;
+  }
+
+  private async getCustomerByUserId(userId: string) {
+    return this.stripe.customers.search({
+      query: `metadata[\"userId\"]: \"${userId}\"`,
+    });
   }
 }
