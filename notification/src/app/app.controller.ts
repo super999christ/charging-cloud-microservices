@@ -1,4 +1,12 @@
-import { Body, Controller, Inject, Logger, Post, Response } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Inject,
+  Logger,
+  Post,
+  Response,
+} from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation } from "@nestjs/swagger";
 import Environment from "../config/env";
 import { Response as IResponse } from "express";
@@ -55,7 +63,9 @@ export class AppController {
     });
     this.twilioService
       .sendSMS(phoneNumber, authMessage)
-      .catch(err => this.logger.error("Failed to send sms auth code.", JSON.stringify(err)));
+      .catch((err) =>
+        this.logger.error("Failed to send sms auth code.", JSON.stringify(err))
+      );
     response.status(200).send(notification);
   }
 
@@ -101,7 +111,9 @@ export class AppController {
 
     this.emailService
       .sendEmail(email, notification.emailSubject, notification.emailBody)
-      .catch(err => this.logger.error("Failed to send email auth code", JSON.stringify(err)));
+      .catch((err) =>
+        this.logger.error("Failed to send email auth code", JSON.stringify(err))
+      );
     response.status(200).send(notification);
   }
 
@@ -147,7 +159,12 @@ export class AppController {
 
     this.emailService
       .sendEmail(email, notification.emailSubject, notification.emailBody)
-      .catch(err => this.logger.error("Failed to send password reset request", JSON.stringify(err)));
+      .catch((err) =>
+        this.logger.error(
+          "Failed to send password reset request",
+          JSON.stringify(err)
+        )
+      );
     response.status(200).send(notification);
   }
 
@@ -159,19 +176,27 @@ export class AppController {
     @Response() response: IResponse
   ) {
     const { type, eventId, email, phoneNumber } = body;
-    if (type === 'email') {
-      await this.emailService.sendEmail(email!, "Charging Completed", `EventId=${eventId}`);
+    if (type === "email") {
+      await this.emailService.sendEmail(
+        email!,
+        "Charging Completed",
+        `EventId=${eventId}`
+      );
     } else {
-      await this.twilioService.sendSMS(phoneNumber!, `Charging Completed with EventId=${eventId}`);
+      await this.twilioService.sendSMS(
+        phoneNumber!,
+        `Charging Completed with EventId=${eventId}`
+      );
     }
     const notification = await this.eventNotificationService.saveNotification({
       isComplete: true,
       eventId,
-      type
+      type,
     });
     response.status(200).send(notification);
   }
 
+  @Get("healthz")
   public async healthz(@Response() res: IResponse) {
     return res.sendStatus(200);
   }
