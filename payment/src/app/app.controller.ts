@@ -3,7 +3,6 @@ import {
   Controller,
   Get,
   Inject,
-  Logger,
   Post,
   Put,
   Request,
@@ -16,10 +15,12 @@ import { UpdateCCDto } from "./dtos/UpdateCC.dto";
 import { CompleteCCDto } from "./dtos/CompleteCC.dto";
 import axios from "axios";
 import Environment from "../config/env";
+import { PinoLogger, InjectPinoLogger } from "nestjs-pino";
 
 @Controller()
 export class AppController {
-  private readonly logger = new Logger(AppController.name);
+  @InjectPinoLogger(AppController.name)
+  private readonly logger: PinoLogger;
 
   @Inject()
   paymentService: PaymentService;

@@ -9,6 +9,7 @@ import { AppController } from "./app.controller";
 import { AuthMiddleware } from "../middlewares/auth.middleware";
 import { EmailModule } from "../services/email/email.module";
 import { EventNotificationModule } from "../database/event-notification/event-notification.module";
+import { LoggerModule } from "nestjs-pino";
 
 @Module({
   controllers: [AppController],
@@ -20,6 +21,9 @@ import { EventNotificationModule } from "../database/event-notification/event-no
     EmailNotificationModule,
     SMSNotificationModule,
     EventNotificationModule,
+    LoggerModule.forRoot({
+      exclude: [{ method: RequestMethod.ALL, path: "healthz" }],
+    }),
   ],
 })
 export class AppModule {
