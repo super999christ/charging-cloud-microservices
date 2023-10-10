@@ -4,7 +4,7 @@ import { AppModule } from "./app/app.module";
 import { Logger } from "nestjs-pino";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
 
   const options = new DocumentBuilder()
     .setTitle("Payment Microservice")
