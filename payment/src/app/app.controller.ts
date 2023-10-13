@@ -42,6 +42,11 @@ export class AppController {
       customer.id
     );
 
+    if (paymentMethods.data.length <= 0)
+      throw new BadRequestException(
+        "You do not have any attached payment methods."
+      );
+
     const paymentMethod = paymentMethods.data[0];
 
     return {
