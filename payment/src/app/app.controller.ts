@@ -30,16 +30,17 @@ export class AppController {
   @ApiOperation({ summary: "Fetch credit card information" })
   @ApiBearerAuth()
   public async getCC(@Request() req: IRequest) {
-    const userId = (req as any).userId;
-    const customer = await this.paymentService.getCustomer(userId);
-
-    if (!customer)
+    const {
+        data: { stripeCustomerId },
+      } = await getUserProfile(req);
+    
+    if (!stripeCustomerId)
       throw new BadRequestException(
         "You do not have a linked stripe customer id"
       );
 
     const paymentMethods = await this.paymentService.getPaymentMethods(
-      customer.id
+      stripeCustomerId
     );
 
     if (paymentMethods.data.length <= 0)
@@ -65,16 +66,17 @@ export class AppController {
     @Request() req: IRequest,
     @Response() response: IResponse
   ) {
-    const userId = (req as any).userId;
-    const customer = await this.paymentService.getCustomer(userId);
+    const {
+      data: { stripeCustomerId },
+    } = await getUserProfile(req);
 
-    if (!customer)
+    if (!stripeCustomerId)
       throw new BadRequestException(
         "You must create a customer before updating the payment method."
       );
 
     const paymentMethods = await this.paymentService.getPaymentMethods(
-      customer.id
+      stripeCustomerId
     );
 
     paymentMethods.data.forEach((pm) =>
@@ -83,7 +85,7 @@ export class AppController {
 
     await this.paymentService.attachPaymentMethodToCustomer(
       body.pmId,
-      customer.id
+      stripeCustomerId
     );
 
     response.status(204).send();
@@ -96,14 +98,16 @@ export class AppController {
     @Body() body: CompleteCCDto,
     @Request() req: IRequest
   ) {
-    const userId = (req as any).userId;
-    const customer = await this.paymentService.getCustomer(userId);
-    if (!customer)
+    const {
+      data: { stripeCustomerId },
+    } = await getUserProfile(req);
+
+    if (!stripeCustomerId)
       throw new BadRequestException(
         "You do not have a linked stripe customer id"
       );
     const paymentMethods = await this.paymentService.getPaymentMethods(
-      customer.id
+      stripeCustomerId
     );
     if (paymentMethods.data.length <= 0)
       throw new BadRequestException(
@@ -112,7 +116,7 @@ export class AppController {
 
     const charge = await this.paymentService.chargePayment(
       paymentMethods.data[0].id,
-      customer.id,
+      stripeCustomerId,
       body.amount
     );
     return charge;
