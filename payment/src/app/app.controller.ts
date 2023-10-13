@@ -17,6 +17,7 @@ import { CompleteCCDto } from "./dtos/CompleteCC.dto";
 import axios from "axios";
 import Environment from "../config/env";
 import { PinoLogger, InjectPinoLogger } from "nestjs-pino";
+import Stripe from "stripe";
 
 @Controller()
 export class AppController {
@@ -31,9 +32,9 @@ export class AppController {
   @ApiBearerAuth()
   public async getCC(@Request() req: IRequest) {
     const {
-        data: { stripeCustomerId },
-      } = await getUserProfile(req);
-    
+      data: { stripeCustomerId },
+    } = await getUserProfile(req);
+
     if (!stripeCustomerId)
       throw new BadRequestException(
         "You do not have a linked stripe customer id"
@@ -130,11 +131,13 @@ export class AppController {
     const {
       data: { firstName, lastName, email },
     } = await getUserProfile(req);
-    await this.paymentService.createCustomer(
+    const customer = await this.paymentService.createCustomer(
       email,
       `${firstName} ${lastName}`,
       userId
     );
+
+    await updateUserProfile(customer);
 
     return res.status(204).send();
   }
@@ -148,5 +151,11 @@ export class AppController {
 function getUserProfile(req: IRequest) {
   return axios.get(`${Environment.SERVICE_USER_MANAGEMENT_URL}/profile`, {
     headers: { Authorization: (req as any).headers.authorization },
+  });
+}
+
+function updateUserProfile(customer: Stripe.Customer) {
+  return axios.put(`${Environment.SERVICE_USER_MANAGEMENT_URL}/profile`, {
+    stripeCustomerId: customer.id,
   });
 }
