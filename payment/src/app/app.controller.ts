@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -28,32 +29,27 @@ export class AppController {
   @Get("get-cc")
   @ApiOperation({ summary: "Fetch credit card information" })
   @ApiBearerAuth()
-  public async getCC(@Request() req: IRequest, @Response() res: IResponse) {
-    try {
-      const userId = (req as any).userId;
-      const customer = await this.paymentService.getCustomer(userId);
+  public async getCC(@Request() req: IRequest) {
+    const userId = (req as any).userId;
+    const customer = await this.paymentService.getCustomer(userId);
 
-      if (!customer)
-        return res
-          .status(400)
-          .send("You do not have a linked stripe customer id");
-
-      const paymentMethods = await this.paymentService.getPaymentMethods(
-        customer.id
+    if (!customer)
+      throw new BadRequestException(
+        "You do not have a linked stripe customer id"
       );
 
-      const paymentMethod = paymentMethods.data[0];
+    const paymentMethods = await this.paymentService.getPaymentMethods(
+      customer.id
+    );
 
-      res.send({
-        last4: paymentMethod.card?.last4,
-        expMonth: paymentMethod.card?.exp_month,
-        expYear: paymentMethod.card?.exp_year,
-        postalCode: paymentMethod.billing_details.address?.postal_code,
-      });
-    } catch (err) {
-      this.logger.error(JSON.stringify(err));
-      res.sendStatus(400);
-    }
+    const paymentMethod = paymentMethods.data[0];
+
+    return {
+      last4: paymentMethod.card?.last4,
+      expMonth: paymentMethod.card?.exp_month,
+      expYear: paymentMethod.card?.exp_year,
+      postalCode: paymentMethod.billing_details.address?.postal_code,
+    };
   }
 
   @Put("update-cc")
@@ -64,35 +60,28 @@ export class AppController {
     @Request() req: IRequest,
     @Response() response: IResponse
   ) {
-    try {
-      const userId = (req as any).userId;
-      const customer = await this.paymentService.getCustomer(userId);
+    const userId = (req as any).userId;
+    const customer = await this.paymentService.getCustomer(userId);
 
-      if (!customer)
-        return response
-          .status(400)
-          .send(
-            "You must create a customer before updating the payment method."
-          );
-
-      const paymentMethods = await this.paymentService.getPaymentMethods(
-        customer.id
+    if (!customer)
+      throw new BadRequestException(
+        "You must create a customer before updating the payment method."
       );
 
-      paymentMethods.data.forEach((pm) =>
-        this.paymentService.detachPaymentMethod(pm.id)
-      );
+    const paymentMethods = await this.paymentService.getPaymentMethods(
+      customer.id
+    );
 
-      await this.paymentService.attachPaymentMethodToCustomer(
-        body.pmId,
-        customer.id
-      );
+    paymentMethods.data.forEach((pm) =>
+      this.paymentService.detachPaymentMethod(pm.id)
+    );
 
-      response.status(204).send();
-    } catch (err) {
-      this.logger.error(JSON.stringify(err));
-      response.status(400).send("Failed to update credit card");
-    }
+    await this.paymentService.attachPaymentMethodToCustomer(
+      body.pmId,
+      customer.id
+    );
+
+    response.status(204).send();
   }
 
   @Post("complete-charge")
@@ -100,37 +89,28 @@ export class AppController {
   @ApiBearerAuth()
   public async completeCharge(
     @Body() body: CompleteCCDto,
-    @Request() req: IRequest,
-    @Response() res: IResponse
+    @Request() req: IRequest
   ) {
-    try {
-      const userId = (req as any).userId;
-      const customer = await this.paymentService.getCustomer(userId);
-
-      if (!customer)
-        return res
-          .status(400)
-          .send("You do not have a linked stripe customer id");
-
-      const paymentMethods = await this.paymentService.getPaymentMethods(
-        customer.id
+    const userId = (req as any).userId;
+    const customer = await this.paymentService.getCustomer(userId);
+    if (!customer)
+      throw new BadRequestException(
+        "You do not have a linked stripe customer id"
+      );
+    const paymentMethods = await this.paymentService.getPaymentMethods(
+      customer.id
+    );
+    if (paymentMethods.data.length <= 0)
+      throw new BadRequestException(
+        "You do not have an attached payment method"
       );
 
-      if (paymentMethods.data.length <= 0)
-        return res
-          .status(400)
-          .send("You do not have an attached payment method");
-
-      const charge = await this.paymentService.chargePayment(
-        paymentMethods.data[0].id,
-        customer.id,
-        body.amount
-      );
-      res.send(charge);
-    } catch (err) {
-      this.logger.error(JSON.stringify(err));
-      res.status(400).send("Failed to process payment");
-    }
+    const charge = await this.paymentService.chargePayment(
+      paymentMethods.data[0].id,
+      customer.id,
+      body.amount
+    );
+    return charge;
   }
 
   @Post("customer")
