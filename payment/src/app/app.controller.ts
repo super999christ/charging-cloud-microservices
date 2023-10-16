@@ -139,7 +139,7 @@ export class AppController {
         userId
       );
 
-      await updateUserProfile(customer);
+      await updateUserProfile(req, customer);
     }
 
     return res.sendStatus(204);
@@ -157,8 +157,12 @@ function getUserProfile(req: IRequest) {
   });
 }
 
-function updateUserProfile(customer: Stripe.Customer) {
-  return axios.put(`${Environment.SERVICE_USER_MANAGEMENT_URL}/profile`, {
-    stripeCustomerId: customer.id,
-  });
+function updateUserProfile(req: IRequest, customer: Stripe.Customer) {
+  return axios.put(
+    `${Environment.SERVICE_USER_MANAGEMENT_URL}/profile`,
+    {
+      stripeCustomerId: customer.id,
+    },
+    { headers: { Authorization: (req as any).headers.authorization } }
+  );
 }
