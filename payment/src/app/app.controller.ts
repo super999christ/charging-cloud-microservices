@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   Inject,
+  NotFoundException,
   Post,
   Put,
   Request,
@@ -40,7 +41,7 @@ export class AppController {
       );
 
     if (!stripePaymentMethodId)
-      throw new BadRequestException(
+      throw new NotFoundException(
         "You do not have any attached payment method."
       );
 
