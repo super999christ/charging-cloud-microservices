@@ -14,10 +14,9 @@ import { PaymentService } from "../services/payment/payment.service";
 import { ApiBearerAuth, ApiOperation } from "@nestjs/swagger";
 import { UpdateCCDto } from "./dtos/UpdateCC.dto";
 import { CompleteCCDto } from "./dtos/CompleteCC.dto";
-import axios from "axios";
+import axios, { AxiosResponse } from "axios";
 import Environment from "../config/env";
 import { PinoLogger, InjectPinoLogger } from "nestjs-pino";
-import Stripe from "stripe";
 
 @Controller()
 export class AppController {
@@ -32,7 +31,7 @@ export class AppController {
   @ApiBearerAuth()
   public async getCC(@Request() req: IRequest) {
     const {
-      data: { stripeCustomerId },
+      data: { stripeCustomerId, stripePaymentMethodId },
     } = await getUserProfile(req);
 
     if (!stripeCustomerId)
@@ -40,16 +39,15 @@ export class AppController {
         "You do not have a linked stripe customer id"
       );
 
-    const paymentMethods = await this.paymentService.getPaymentMethods(
-      stripeCustomerId
-    );
-
-    if (paymentMethods.data.length <= 0)
+    if (!stripePaymentMethodId)
       throw new BadRequestException(
-        "You do not have any attached payment methods."
+        "You do not have any attached payment method."
       );
 
-    const paymentMethod = paymentMethods.data[0];
+    const paymentMethod = await this.paymentService.getPaymentMethod(
+      stripeCustomerId,
+      stripePaymentMethodId
+    );
 
     return {
       last4: paymentMethod.card?.last4,
@@ -68,7 +66,7 @@ export class AppController {
     @Response() response: IResponse
   ) {
     const {
-      data: { stripeCustomerId },
+      data: { stripeCustomerId, stripePaymentMethodId },
     } = await getUserProfile(req);
 
     if (!stripeCustomerId)
@@ -76,20 +74,17 @@ export class AppController {
         "You must create a customer before updating the payment method."
       );
 
-    const paymentMethods = await this.paymentService.getPaymentMethods(
-      stripeCustomerId
-    );
-
-    paymentMethods.data.forEach((pm) =>
-      this.paymentService.detachPaymentMethod(pm.id)
-    );
+    if (stripePaymentMethodId)
+      await this.paymentService.detachPaymentMethod(stripePaymentMethodId);
 
     await this.paymentService.attachPaymentMethodToCustomer(
       body.pmId,
       stripeCustomerId
     );
 
-    response.status(204).send();
+    await updateUserProfile(req, { stripePaymentMethodId: body.pmId });
+
+    response.sendStatus(204);
   }
 
   @Post("complete-charge")
@@ -100,23 +95,21 @@ export class AppController {
     @Request() req: IRequest
   ) {
     const {
-      data: { stripeCustomerId },
+      data: { stripeCustomerId, stripePaymentMethodId },
     } = await getUserProfile(req);
 
     if (!stripeCustomerId)
       throw new BadRequestException(
         "You do not have a linked stripe customer id"
       );
-    const paymentMethods = await this.paymentService.getPaymentMethods(
-      stripeCustomerId
-    );
-    if (paymentMethods.data.length <= 0)
+
+    if (!stripePaymentMethodId)
       throw new BadRequestException(
-        "You do not have an attached payment method"
+        "You do not have any attached payment method."
       );
 
     const charge = await this.paymentService.chargePayment(
-      paymentMethods.data[0].id,
+      stripePaymentMethodId,
       stripeCustomerId,
       body.amount
     );
@@ -139,7 +132,7 @@ export class AppController {
         userId
       );
 
-      await updateUserProfile(customer);
+      await updateUserProfile(req, { stripeCustomerId: customer.id });
     }
 
     return res.sendStatus(204);
@@ -151,14 +144,26 @@ export class AppController {
   }
 }
 
-function getUserProfile(req: IRequest) {
+type User = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  stripeCustomerId: string;
+  stripePaymentMethodId: string;
+};
+
+function getUserProfile(req: IRequest): Promise<AxiosResponse<User>> {
   return axios.get(`${Environment.SERVICE_USER_MANAGEMENT_URL}/profile`, {
     headers: { Authorization: (req as any).headers.authorization },
   });
 }
 
-function updateUserProfile(customer: Stripe.Customer) {
-  return axios.put(`${Environment.SERVICE_USER_MANAGEMENT_URL}/profile`, {
-    stripeCustomerId: customer.id,
-  });
+function updateUserProfile(req: IRequest, user: Partial<User>) {
+  return axios.put(
+    `${Environment.SERVICE_USER_MANAGEMENT_URL}/profile`,
+    {
+      ...user,
+    },
+    { headers: { Authorization: (req as any).headers.authorization } }
+  );
 }
