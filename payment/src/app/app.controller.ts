@@ -129,17 +129,20 @@ export class AppController {
   public async customer(@Request() req: IRequest, @Response() res: IResponse) {
     const userId = (req as any).userId;
     const {
-      data: { firstName, lastName, email },
+      data: { firstName, lastName, email, stripeCustomerId },
     } = await getUserProfile(req);
-    const customer = await this.paymentService.createCustomer(
-      email,
-      `${firstName} ${lastName}`,
-      userId
-    );
 
-    await updateUserProfile(customer);
+    if (!stripeCustomerId) {
+      const customer = await this.paymentService.createCustomer(
+        email,
+        `${firstName} ${lastName}`,
+        userId
+      );
 
-    return res.status(204).send();
+      await updateUserProfile(customer);
+    }
+
+    return res.sendStatus(204);
   }
 
   @Get("healthz")
