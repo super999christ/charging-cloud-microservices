@@ -15,7 +15,7 @@ import { PaymentService } from "../services/payment/payment.service";
 import { ApiBearerAuth, ApiOperation } from "@nestjs/swagger";
 import { UpdateCCDto } from "./dtos/UpdateCC.dto";
 import { CompleteCCDto } from "./dtos/CompleteCC.dto";
-import axios, { AxiosResponse } from "axios";
+import axios from "axios";
 import Environment from "../config/env";
 import { PinoLogger, InjectPinoLogger } from "nestjs-pino";
 
@@ -31,9 +31,9 @@ export class AppController {
   @ApiOperation({ summary: "Fetch credit card information" })
   @ApiBearerAuth()
   public async getCC(@Request() req: IRequest) {
-    const {
-      data: { stripeCustomerId, stripePaymentMethodId },
-    } = await getUserProfile(req);
+    const { stripeCustomerId, stripePaymentMethodId } = await getUserProfile(
+      req
+    );
 
     if (!stripeCustomerId)
       throw new BadRequestException(
