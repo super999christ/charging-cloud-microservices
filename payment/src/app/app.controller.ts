@@ -141,21 +141,25 @@ export class AppController {
   @Get("customer-payment")
   @ApiOperation({ summary: "Gets customer's payment information" })
   @ApiBearerAuth()
-  public async customerPayment(@Request() req: IRequest, @Response() res: IResponse) {
+  public async customerPayment(@Request() req: IRequest) {
     const userId = (req as any).userId;
     const customer = await this.paymentService.getCustomer(userId);
-    let result = {
-      customerId: null,
-      paymentMethodId: null
-    };
+
     if (customer) {
-      result.customerId = customer.id;
-      const paymentMethods = await this.paymentService.getPaymentMethods(customer.id);
-      if (paymentMethods.data.length) {
-        result.paymentMethodId = paymentMethods.data[0].id;
+      const paymentMethods = await this.paymentService.getPaymentMethods(
+        customer.id
+      );
+      if (0 <= paymentMethods.data.length) {
+        return {
+          customerId: customer.id,
+          paymentMethodId: paymentMethods.data[0].id,
+        };
       }
+      throw new BadRequestException("User does not have any payment methods.");
     }
-    return result;
+    throw new BadRequestException(
+      "User does not have an associated stripe customer"
+    );
   }
 
   @Get("healthz")
