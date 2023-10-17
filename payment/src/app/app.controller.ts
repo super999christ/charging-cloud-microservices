@@ -66,9 +66,9 @@ export class AppController {
     @Request() req: IRequest,
     @Response() response: IResponse
   ) {
-    const {
-      data: { stripeCustomerId, stripePaymentMethodId },
-    } = await getUserProfile(req);
+    const { stripeCustomerId, stripePaymentMethodId } = await getUserProfile(
+      req
+    );
 
     if (!stripeCustomerId)
       throw new BadRequestException(
@@ -95,9 +95,9 @@ export class AppController {
     @Body() body: CompleteCCDto,
     @Request() req: IRequest
   ) {
-    const {
-      data: { stripeCustomerId, stripePaymentMethodId },
-    } = await getUserProfile(req);
+    const { stripeCustomerId, stripePaymentMethodId } = await getUserProfile(
+      req
+    );
 
     if (!stripeCustomerId)
       throw new BadRequestException(
@@ -122,9 +122,8 @@ export class AppController {
   @ApiBearerAuth()
   public async customer(@Request() req: IRequest, @Response() res: IResponse) {
     const userId = (req as any).userId;
-    const {
-      data: { firstName, lastName, email, stripeCustomerId },
-    } = await getUserProfile(req);
+    const { firstName, lastName, email, stripeCustomerId } =
+      await getUserProfile(req);
 
     if (!stripeCustomerId) {
       const customer = await this.paymentService.createCustomer(
@@ -153,10 +152,12 @@ type User = {
   stripePaymentMethodId: string;
 };
 
-function getUserProfile(req: IRequest): Promise<AxiosResponse<User>> {
-  return axios.get(`${Environment.SERVICE_USER_MANAGEMENT_URL}/profile`, {
-    headers: { Authorization: (req as any).headers.authorization },
-  });
+async function getUserProfile(req: IRequest): Promise<User> {
+  return axios
+    .get(`${Environment.SERVICE_USER_MANAGEMENT_URL}/profile`, {
+      headers: { Authorization: (req as any).headers.authorization },
+    })
+    .then((data) => data.data);
 }
 
 function updateUserProfile(req: IRequest, user: Partial<User>) {
