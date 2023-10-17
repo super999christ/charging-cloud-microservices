@@ -145,6 +145,26 @@ export class AppController {
     return res.sendStatus(204);
   }
 
+  @Get("customer-payment")
+  @ApiOperation({ summary: "Gets customer's payment information" })
+  @ApiBearerAuth()
+  public async customerPayment(@Request() req: IRequest, @Response() res: IResponse) {
+    const userId = (req as any).userId;
+    const customer = await this.paymentService.getCustomer(userId);
+    let result = {
+      customerId: null,
+      paymentMethodId: null
+    };
+    if (customer) {
+      result.customerId = customer.id;
+      const paymentMethods = await this.paymentService.getPaymentMethods(customer.id);
+      if (paymentMethods.data.length) {
+        result.paymentMethodId = paymentMethods.data[0].id;
+      }
+    }
+    return result;
+  }
+
   @Get("healthz")
   public async healthz(@Response() res: IResponse) {
     return res.sendStatus(200);
