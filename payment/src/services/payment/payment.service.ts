@@ -64,7 +64,7 @@ export class PaymentService {
     return this.stripe.customers.retrievePaymentMethod(customerId, pmId);
   }
 
-  public async chargePayment(pmId: string, cusId: string, amount: number) {
+  public async chargePayment(pmId: string, cusId: string, amount: number, idempotencyKey?: string) {
     const paymentIntent = await this.stripe.paymentIntents.create({
       payment_method: pmId,
       customer: cusId,
@@ -72,6 +72,8 @@ export class PaymentService {
       currency: "USD",
       confirm: true,
       description: "NXU charge",
+    }, {
+      idempotencyKey
     });
     return paymentIntent;
   }
