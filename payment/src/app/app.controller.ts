@@ -149,13 +149,12 @@ export class AppController {
       const paymentMethods = await this.paymentService.getPaymentMethods(
         customer.id
       );
-      if (0 <= paymentMethods.data.length) {
-        return {
-          customerId: customer.id,
-          paymentMethodId: paymentMethods.data[0].id,
-        };
-      }
-      throw new BadRequestException("User does not have any payment methods.");
+
+      return {
+        customerId: customer.id,
+        paymentMethodId:
+          0 < paymentMethods.data.length ? paymentMethods.data[0].id : "",
+      };
     }
     throw new BadRequestException(
       "User does not have an associated stripe customer"
