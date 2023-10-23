@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "dev": "nest start --watch",
+    "dev": "SET CONSUMER_ENVIRONMENT=local&nest start --watch",
     "start": "nest start",
     "build": "nest build",
     "migration:generate": "typeorm migration:generate --outputJs true --dataSource dist/typeorm/datasource.js",
