@@ -1,7 +1,8 @@
 import * as dotenv from "dotenv";
 
 dotenv.config();
-dotenv.config({ path: "../.env" });
+if (process.env.CONSUMER_ENVIRONMENT === 'local')
+  dotenv.config({ path: "../.env" });
 
 const Environment = {
   SERVICE_API_AUTH_URL: String(process.env["SERVICE_API_AUTH_URL"]),
