@@ -6,4 +6,7 @@ export class CompleteCCDto {
 
   @ApiProperty()
   idempotencyKey?: string;
+
+  @ApiProperty()
+  description?: string;
 }
