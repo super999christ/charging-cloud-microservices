@@ -112,7 +112,9 @@ export class AppController {
     const charge = await this.paymentService.chargePayment(
       stripePaymentMethodId,
       stripeCustomerId,
-      body.amount
+      body.amount,
+      body.idempotencyKey,
+      body.description
     );
     return charge;
   }
