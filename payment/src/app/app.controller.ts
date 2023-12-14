@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   Inject,
+  InternalServerErrorException,
   NotFoundException,
   Post,
   Put,
@@ -108,6 +109,21 @@ export class AppController {
       throw new BadRequestException(
         "You do not have any attached payment method."
       );
+    
+    const paymentMethod = await this.paymentService.getPaymentMethod(
+      stripeCustomerId,
+      stripePaymentMethodId
+    );
+    
+    const exp_month = paymentMethod.card?.exp_month;
+    const exp_year = paymentMethod.card?.exp_year;
+    if (exp_month && exp_year) {
+      if (new Date() >= new Date(exp_year, exp_month)) {
+        throw new InternalServerErrorException(
+          `Your card has been expired in ${exp_month}/${exp_year}`
+        )
+      }
+    }
 
     const charge = await this.paymentService.chargePayment(
       stripePaymentMethodId,
