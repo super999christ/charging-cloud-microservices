@@ -21,6 +21,7 @@ import { ValidateEmailAuthCodeDto } from "./dtos/ValidateEmailAuthCode.dto";
 import { SendPasswordResetLink } from "./dtos/SendPasswordResetLink.dto";
 import { SendChargingEventCompletedDto } from "./dtos/SendChargingEventCompleted.dto";
 import { EventNotificationService } from "../database/event-notification/event-notification.service";
+import { SendSMSMessageDto } from "./dtos/SendSMSMessage.dto";
 
 @Controller()
 export class AppController {
@@ -36,6 +37,27 @@ export class AppController {
   private emailNotificationService: EmailNotificationService;
   @Inject()
   private eventNotificationService: EventNotificationService;
+
+  @Post("send-sms-message")
+  @ApiOperation({ summary: "Send SMS text notification" })
+  @ApiBearerAuth()
+  public async sendSMSMessage(
+    @Body() sendSMSMessageDto: SendSMSMessageDto,
+    @Response() response: IResponse
+  ) {
+    const { phoneNumber, smsMessage } = sendSMSMessageDto;
+    try {
+      const isValid = await this.twilioService.isValidPhoneNumber(phoneNumber);
+      if (!isValid) {
+        throw Error(`Invalid phone number: ${phoneNumber}`);
+      }
+      this.twilioService.sendSMS(phoneNumber, smsMessage);
+      response.send("success");
+    } catch (err) {
+      this.logger.error(`Failed to send SMS message: ${JSON.stringify(err)}`);
+      response.send("error");
+    }
+  }
 
   @Post("send-sms-authcode")
   @ApiOperation({ summary: "Send SMS AuthCode notification" })
