@@ -54,7 +54,8 @@ export class AppController {
       this.twilioService.sendSMS(phoneNumber, smsMessage);
       response.send("success");
     } catch (err) {
-      this.logger.error(`Failed to send SMS message: ${JSON.stringify(err)}`);
+      this.logger.error(`Failed to send SMS message:`);
+      this.logger.error(err);
       response.send("error");
     }
   }
